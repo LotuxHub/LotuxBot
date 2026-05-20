@@ -3,29 +3,23 @@ const { EmbedBuilder } = require('discord.js');
 
 const UNVERIFIED_ROLE = '❌Unverified';
 const VERIFIED_ROLE   = '✅Verified';
+const MEMBER_ROLE_ID  = '1504852768563920936'; // 👥Membro
 
 module.exports = {
   name: 'messageCreate',
 
   async execute(message, client) {
-    // Ignora bots e DMs
     if (message.author.bot || !message.guild) return;
 
     const userId = message.author.id;
     const entry  = client.verificationCodes.get(userId);
 
-    // Só processa se o usuário tiver um código pendente
     if (!entry) return;
-
-    // Verifica se o canal é o mesmo onde a verificação foi iniciada
     if (message.channelId !== entry.channelId) return;
 
     const inputCode = message.content.trim().toUpperCase();
-
-    // Apaga a mensagem do usuário (para não expor o código)
     try { await message.delete(); } catch {}
 
-    // Código expirado
     if (!isCodeValid(entry)) {
       client.verificationCodes.delete(userId);
       const reply = await message.channel.send({
@@ -35,8 +29,6 @@ module.exports = {
       return;
     }
 
-    // Código errado — só ignora se não parece ser uma tentativa
-    // (só reage se tiver exatamente 6 caracteres alfanuméricos)
     if (!/^[A-Z0-9]{6}$/.test(inputCode)) return;
 
     if (inputCode !== entry.code) {
@@ -54,13 +46,13 @@ module.exports = {
 
       const unverifiedRole = guild.roles.cache.find(r => r.name === UNVERIFIED_ROLE);
       const verifiedRole   = guild.roles.cache.find(r => r.name === VERIFIED_ROLE);
+      const memberRole     = guild.roles.cache.get(MEMBER_ROLE_ID);
 
       if (unverifiedRole && member.roles.cache.has(unverifiedRole.id)) {
         await member.roles.remove(unverifiedRole);
       }
-      if (verifiedRole) {
-        await member.roles.add(verifiedRole);
-      }
+      if (verifiedRole) await member.roles.add(verifiedRole);
+      if (memberRole)   await member.roles.add(memberRole);
 
       client.verificationCodes.delete(userId);
 

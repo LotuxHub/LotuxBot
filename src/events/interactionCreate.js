@@ -9,9 +9,16 @@ const {
 } = require('discord.js');
 const { generateCode, isCodeValid } = require('../utils/codeManager');
 
-// Nomes exatos dos cargos
 const UNVERIFIED_ROLE = '❌Unverified';
 const VERIFIED_ROLE   = '✅Verified';
+const MEMBER_ROLE_ID  = '1504852768563920936'; // 👥Membro
+
+const PING_ROLES = [
+  { id: '1504964221048455199', customId: 'ping_update'     },
+  { id: '1504964041959931965', customId: 'ping_ann_script' },
+  { id: '1504962681784766555', customId: 'ping_ann_hub'    },
+  { id: '1504962613480525905', customId: 'ping_revive'     },
+];
 
 module.exports = {
   name: 'interactionCreate',
@@ -47,10 +54,9 @@ module.exports = {
         guildId:   guild.id,
         guildName: guild.name,
         channelId: interaction.channelId,
-        expiresAt: Date.now() + 10 * 60 * 1000, // 10 min
+        expiresAt: Date.now() + 10 * 60 * 1000,
       });
 
-      // 1) DM com o código
       try {
         const dmEmbed = new EmbedBuilder()
           .setColor(0x5865F2)
@@ -75,7 +81,6 @@ module.exports = {
         return;
       }
 
-      // 2) Mensagem ephemeral com botão Send Code
       const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
           .setCustomId('send_code')
@@ -123,10 +128,19 @@ module.exports = {
       );
       return;
     }
+
+    // ── Botões de Ping (toggle de cargo) ───────────────────────────
+    if (interaction.isButton()) {
+      const pingRole = PING_ROLES.find(r => r.customId === interaction.customId);
+      if (pingRole) {
+        await handlePingToggle(interaction, pingRole);
+        return;
+      }
+    }
   },
 };
 
-// ── Função central de validação de código ─────────────────────────
+// ── Validação de código ────────────────────────────────────────────
 async function handleCodeValidation(interaction, client, inputCode) {
   const userId = interaction.user.id;
   const entry  = client.verificationCodes.get(userId);
@@ -153,14 +167,22 @@ async function handleCodeValidation(interaction, client, inputCode) {
     const guild  = await client.guilds.fetch(entry.guildId);
     const member = await guild.members.fetch(userId);
 
+    // Remove ❌Unverified
     const unverifiedRole = guild.roles.cache.find(r => r.name === UNVERIFIED_ROLE);
-    const verifiedRole   = guild.roles.cache.find(r => r.name === VERIFIED_ROLE);
-
     if (unverifiedRole && member.roles.cache.has(unverifiedRole.id)) {
       await member.roles.remove(unverifiedRole);
     }
-    if (verifiedRole) {
-      await member.roles.add(verifiedRole);
+
+    // Adiciona ✅Verified
+    const verifiedRole = guild.roles.cache.find(r => r.name === VERIFIED_ROLE);
+    if (verifiedRole) await member.roles.add(verifiedRole);
+
+    // Adiciona 👥Membro
+    const memberRole = guild.roles.cache.get(MEMBER_ROLE_ID);
+    if (memberRole) {
+      await member.roles.add(memberRole);
+    } else {
+      console.warn(`[VERIFY] Cargo 👥Membro (${MEMBER_ROLE_ID}) não encontrado.`);
     }
 
     client.verificationCodes.delete(userId);
@@ -185,5 +207,29 @@ async function handleCodeValidation(interaction, client, inputCode) {
   }
 }
 
-// Exporta a função para ser usada pelo messageCreate também
+// ── Toggle de cargo de ping ────────────────────────────────────────
+async function handlePingToggle(interaction, pingRole) {
+  try {
+    const member = interaction.member;
+    const role   = interaction.guild.roles.cache.get(pingRole.id);
+
+    if (!role) {
+      await interaction.reply({ content: `❌ Cargo não encontrado no servidor.`, ephemeral: true });
+      return;
+    }
+
+    const hasRole = member.roles.cache.has(role.id);
+    if (hasRole) {
+      await member.roles.remove(role);
+      await interaction.reply({ content: `🔕 Cargo **${role.name}** removido!`, ephemeral: true });
+    } else {
+      await member.roles.add(role);
+      await interaction.reply({ content: `🔔 Cargo **${role.name}** adicionado!`, ephemeral: true });
+    }
+  } catch (err) {
+    console.error('[PING TOGGLE] Erro:', err);
+    await interaction.reply({ content: '❌ Não foi possível alterar o cargo. Contate um administrador.', ephemeral: true });
+  }
+}
+
 module.exports.handleCodeValidation = handleCodeValidation;

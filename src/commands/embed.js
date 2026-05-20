@@ -2,19 +2,13 @@ const {
   SlashCommandBuilder,
   EmbedBuilder,
   PermissionFlagsBits,
-  ModalBuilder,
-  TextInputBuilder,
-  TextInputStyle,
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
 } = require('discord.js');
 
-// Converte nome de cor ou hex string para número
 function parseColor(str) {
   if (!str) return 0x5865F2;
-  const hex = str.trim().replace('#', '');
-  // Nomes comuns
   const names = {
     azul: 0x5865F2, blue: 0x5865F2,
     verde: 0x57F287, green: 0x57F287,
@@ -29,6 +23,7 @@ function parseColor(str) {
     ciano: 0x1ABC9C, cyan: 0x1ABC9C,
   };
   if (names[str.toLowerCase()]) return names[str.toLowerCase()];
+  const hex = str.trim().replace('#', '');
   const parsed = parseInt(hex, 16);
   return isNaN(parsed) ? 0x5865F2 : parsed;
 }
@@ -118,24 +113,22 @@ module.exports = {
     ),
 
   async execute(interaction) {
-    const titulo     = interaction.options.getString('titulo');
-    const descricao  = interaction.options.getString('descricao').replace(/\\n/g, '\n');
-    const cor        = interaction.options.getString('cor') || null;
-    const rodape     = interaction.options.getString('rodape') || null;
-    const imagem     = interaction.options.getAttachment('imagem') || null;
-    const thumbnail  = interaction.options.getAttachment('thumbnail') || null;
-    const mencionar  = interaction.options.getString('mencionar') || null;
-    const showTs     = interaction.options.getBoolean('timestamp') ?? true;
-    const canal      = interaction.options.getChannel('canal') || interaction.channel;
+    const titulo    = interaction.options.getString('titulo');
+    const descricao = interaction.options.getString('descricao').replace(/\\n/g, '\n');
+    const cor       = interaction.options.getString('cor') || null;
+    const rodape    = interaction.options.getString('rodape') || null;
+    const imagem    = interaction.options.getAttachment('imagem') || null;
+    const thumbnail = interaction.options.getAttachment('thumbnail') || null;
+    const mencionar = interaction.options.getString('mencionar') || null;
+    const showTs    = interaction.options.getBoolean('timestamp') ?? true;
+    const canal     = interaction.options.getChannel('canal') || interaction.channel;
 
     // Campos opcionais
     const campos = [];
     for (let i = 1; i <= 3; i++) {
       const nome  = interaction.options.getString(`campo${i}_nome`);
       const valor = interaction.options.getString(`campo${i}_valor`);
-      if (nome && valor) {
-        campos.push({ name: nome, value: valor, inline: true });
-      }
+      if (nome && valor) campos.push({ name: nome, value: valor, inline: true });
     }
 
     const embed = new EmbedBuilder()
@@ -153,8 +146,7 @@ module.exports = {
       iconURL: interaction.user.displayAvatarURL(),
     });
 
-    // Preview ephemeral com botão de confirmar/cancelar
-    const rowPreview = new ActionRowBuilder().addComponents(
+    const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId('embed_confirm')
         .setLabel('✅ Enviar')
@@ -165,49 +157,54 @@ module.exports = {
         .setStyle(ButtonStyle.Danger),
     );
 
+    // Envia preview ephemeral
     await interaction.reply({
       content: `**Preview** — será enviado em ${canal}:`,
       embeds: [embed],
-      components: [rowPreview],
+      components: [row],
       ephemeral: true,
     });
 
-    // Aguarda clique no botão (60s)
-    const filter = i => i.user.id === interaction.user.id && ['embed_confirm', 'embed_cancel'].includes(i.customId);
-    let collector;
+    // Coleta o clique direto na interaction (funciona com ephemeral)
+    let btn;
     try {
-      collector = interaction.channel.createMessageComponentCollector({ filter, time: 60_000, max: 1 });
-    } catch {
-      // fallback: envia direto se não conseguir criar collector
-      await canal.send({ content: mencionar ?? undefined, embeds: [embed] });
-      return;
-    }
+      btn = await interaction.fetchReply();
+    } catch {}
 
-    collector.on('collect', async btn => {
-      if (btn.customId === 'embed_cancel') {
-        await btn.update({ content: '❌ Embed cancelado.', embeds: [], components: [] });
+    const filter = i => i.user.id === interaction.user.id && ['embed_confirm', 'embed_cancel'].includes(i.customId);
+
+    const collector = interaction.client.on('interactionCreate', async function handler(btnInteraction) {
+      if (!filter(btnInteraction) || !btnInteraction.isButton()) return;
+      if (!['embed_confirm', 'embed_cancel'].includes(btnInteraction.customId)) return;
+      // Garante que é dessa interação
+      if (btnInteraction.message?.interaction?.id !== interaction.id) return;
+
+      interaction.client.removeListener('interactionCreate', handler);
+
+      if (btnInteraction.customId === 'embed_cancel') {
+        await btnInteraction.update({ content: '❌ Embed cancelado.', embeds: [], components: [] });
         return;
       }
 
       try {
         await canal.send({ content: mencionar ?? undefined, embeds: [embed] });
-        await btn.update({
+        await btnInteraction.update({
           content: `✅ Embed enviado em ${canal}!`,
           embeds: [],
           components: [],
         });
       } catch (err) {
         console.error('[EMBED]', err);
-        await btn.update({ content: '❌ Erro ao enviar o embed.', embeds: [], components: [] });
+        await btnInteraction.update({ content: '❌ Erro ao enviar o embed. Verifique se tenho permissão no canal.', embeds: [], components: [] });
       }
     });
 
-    collector.on('end', async (collected) => {
-      if (collected.size === 0) {
-        try {
-          await interaction.editReply({ content: '⏰ Tempo esgotado. Embed cancelado.', embeds: [], components: [] });
-        } catch {}
-      }
-    });
+    // Timeout de 60s pra limpar
+    setTimeout(async () => {
+      interaction.client.removeListener('interactionCreate', collector);
+      try {
+        await interaction.editReply({ content: '⏰ Tempo esgotado. Embed cancelado.', embeds: [], components: [] });
+      } catch {}
+    }, 60_000);
   },
 };

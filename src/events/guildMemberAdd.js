@@ -19,7 +19,22 @@ module.exports = {
         console.log(`[JOIN] ${member.user.tag} recebeu cargo ${unverifiedRole.name}`);
       }
     } catch (err) {
-      console.error(`[JOIN] Erro ao dar cargo para ${member.user.tag}:`, err);
+      console.error(`[JOIN] Erro ao dar cargo Unverified para ${member.user.tag}:`, err);
+    }
+
+    // ── Dar cargos de autorole configurados ────────────────────────
+    try {
+      const { getAutoRoles } = require('../commands/autorole');
+      const autoRoleIds = getAutoRoles(member.guild.id);
+
+      for (const roleId of autoRoleIds) {
+        const role = member.guild.roles.cache.get(roleId);
+        if (!role) continue;
+        await member.roles.add(role);
+        console.log(`[JOIN] ${member.user.tag} recebeu autorole ${role.name}`);
+      }
+    } catch (err) {
+      console.error(`[JOIN] Erro ao dar autoroles para ${member.user.tag}:`, err);
     }
 
     // ── Log no canal de entrada ────────────────────────────────────

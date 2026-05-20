@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: lotux-bot
+    env: node
+    region: oregon
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: DISCORD_TOKEN
+        sync: false          # você preenche no painel do Render
+      - key: CLIENT_ID
+        value: "1506704645182197922"
+      - key: GUILD_ID
+        value: "1504850459498909696"
+      - key: API_SECRET
+        generateValue: true  # Render gera automaticamente
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "3000"

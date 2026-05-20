@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Lotux Bot — Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:#0c0d12;font-family:'DM Sans',sans-serif;color:#e2e4ed;min-height:100vh}
+    .wrap{max-width:900px;margin:0 auto;padding:52px 28px 64px}
+    .top-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:52px;flex-wrap:wrap;gap:16px}
+    .logo{display:flex;align-items:center;gap:14px}
+    .logo-icon{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#5865F2,#9b59f5);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+    .logo-text h1{font-size:1.15rem;font-weight:700;color:#fff;line-height:1}
+    .logo-text span{font-family:'Space Mono',monospace;font-size:.65rem;color:#5a6480;letter-spacing:1px;margin-top:3px;display:block}
+    .badge-online{display:flex;align-items:center;gap:7px;background:#0f2718;border:1px solid #1a4228;border-radius:99px;padding:6px 14px;font-size:.78rem;color:#4ade80;font-weight:500;transition:color .3s}
+    .dot{width:7px;height:7px;border-radius:50%;background:#4ade80;animation:blink 2s infinite;transition:background .3s;flex-shrink:0}
+    @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+    .section-label{font-family:'Space Mono',monospace;font-size:.65rem;color:#3d4463;text-transform:uppercase;letter-spacing:2px;margin-bottom:16px}
+    .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:14px}
+    .cards-sm{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-bottom:40px}
+    @media(max-width:600px){.cards{grid-template-columns:1fr}.cards-sm{grid-template-columns:1fr}}
+    .card{background:#12141c;border:1px solid #1e2133;border-radius:16px;padding:22px 24px;transition:border-color .25s,transform .2s;cursor:default;position:relative;overflow:hidden}
+    .card::before{content:'';position:absolute;inset:0;border-radius:16px;opacity:0;background:radial-gradient(circle at 60% 40%,#5865F210,transparent 70%);transition:opacity .3s}
+    .card:hover{border-color:#5865F240;transform:translateY(-2px)}
+    .card:hover::before{opacity:1}
+    .card-label{font-size:.72rem;color:#3d4463;font-weight:500;text-transform:uppercase;letter-spacing:.8px;margin-bottom:14px;display:flex;align-items:center;gap:6px}
+    .card-label svg{opacity:.5}
+    .card-value{font-size:2rem;font-weight:700;line-height:1;color:#fff;transition:color .3s}
+    .card-value.mono{font-family:'Space Mono',monospace;font-size:1.05rem;word-break:break-all}
+    .card-value.sm{font-size:1.4rem}
+    .card-sub{font-size:.75rem;color:#3d4463;margin-top:8px;font-weight:400}
+    .clr-green{color:#4ade80}
+    .clr-blue{color:#818cf8}
+    .clr-amber{color:#fbbf24}
+    .clr-purple{color:#c084fc}
+    .divider{height:1px;background:#1a1d2e;margin:0 0 40px}
+    .actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+    .btn{display:inline-flex;align-items:center;gap:8px;padding:10px 20px;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:.85rem;font-weight:600;cursor:pointer;transition:all .2s;border:none;text-decoration:none}
+    .btn-primary{background:#5865F2;color:#fff}
+    .btn-primary:hover{background:#4752d0;transform:translateY(-1px)}
+    .btn-ghost{background:#1a1d2e;color:#7c85b3;border:1px solid #1e2133}
+    .btn-ghost:hover{background:#1e2133;color:#a0aacc}
+    .footer{margin-top:64px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+    .footer p{font-family:'Space Mono',monospace;font-size:.65rem;color:#282c42}
+    .footer .links{display:flex;gap:20px}
+    .footer .links a{font-family:'Space Mono',monospace;font-size:.65rem;color:#3a3f5c;text-decoration:none;transition:color .2s}
+    .footer .links a:hover{color:#5865F2}
+    .last-update{font-size:.72rem;color:#2e3350;display:flex;align-items:center;gap:5px;margin-top:6px}
+    .spark{display:flex;align-items:flex-end;gap:2px;height:28px;margin-top:12px}
+    .spark-bar{width:6px;border-radius:3px;background:#5865F230;transition:height .5s ease}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top-bar">
+    <div class="logo">
+      <div class="logo-icon">⚡</div>
+      <div class="logo-text">
+        <h1>Lotux Bot</h1>
+        <span>DASHBOARD DE STATUS · v1.0.0</span>
+      </div>
+    </div>
+    <div class="badge-online">
+      <span class="dot"></span>
+      <span id="badge-txt">conectando...</span>
+    </div>
+  </div>
+
+  <p class="section-label">Visão geral</p>
+
+  <div class="cards">
+    <div class="card">
+      <div class="card-label">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+        Uptime
+      </div>
+      <div class="card-value clr-green" id="uptime-val">—</div>
+      <div class="card-sub" id="uptime-sub">aguardando dados...</div>
+      <div class="spark" id="spark">
+        <div class="spark-bar" style="height:40%"></div>
+        <div class="spark-bar" style="height:70%"></div>
+        <div class="spark-bar" style="height:55%"></div>
+        <div class="spark-bar" style="height:90%"></div>
+        <div class="spark-bar" style="height:80%"></div>
+        <div class="spark-bar" style="height:100%"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-label">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Servidores
+      </div>
+      <div class="card-value clr-blue" id="guilds-val">—</div>
+      <div class="card-sub">servidores conectados</div>
+    </div>
+    <div class="card">
+      <div class="card-label">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        Verificações
+      </div>
+      <div class="card-value clr-amber" id="pending-val">—</div>
+      <div class="card-sub">pendentes agora</div>
+    </div>
+  </div>
+
+  <div class="cards-sm">
+    <div class="card">
+      <div class="card-label">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="3"/><path d="M7 12h10M7 8h10M7 16h6"/></svg>
+        Bot Tag
+      </div>
+      <div class="card-value mono clr-purple" id="bot-val">—</div>
+      <div class="card-sub">identificador do bot</div>
+    </div>
+    <div class="card">
+      <div class="card-label">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+        Versão
+      </div>
+      <div class="card-value sm" style="color:#fff">1.0.0</div>
+      <div class="last-update">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+        <span id="last-update-txt">atualizando...</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="actions">
+    <button class="btn btn-primary" onclick="fetchStatus()">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 .49-3.45"/></svg>
+      Atualizar
+    </button>
+    <a class="btn btn-ghost" href="/api/status" target="_blank">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+      API /status
+    </a>
+  </div>
+
+  <div class="footer">
+    <p>Lotux Bot © 2026 — Hospedado no Render</p>
+    <div class="links">
+      <a href="/api/status" target="_blank">API</a>
+      <a href="https://render.com" target="_blank">Render</a>
+    </div>
+  </div>
+</div>
+
+<script>
+  function formatUptime(s) {
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const sec = s % 60;
+    if (h > 0) return h + 'h ' + m + 'm';
+    return m + 'm ' + sec + 's';
+  }
+  function formatUptimeSub(s) {
+    const d = Math.floor(s / 86400);
+    const h = Math.floor((s % 86400) / 3600);
+    if (d > 0) return d + ' dia(s) ' + h + 'h de atividade';
+    return 'ativo há ' + Math.floor(s / 60) + ' minutos';
+  }
+  function updateSpark() {
+    const bars = document.querySelectorAll('.spark-bar');
+    bars.forEach((b, i) => {
+      const h = Math.min(100, 30 + Math.random() * 70);
+      b.style.height = h + '%';
+      b.style.background = i === bars.length - 1 ? '#5865F2' : '#5865F230';
+    });
+  }
+  function now() {
+    return new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  }
+  async function fetchStatus() {
+    const badge = document.getElementById('badge-txt');
+    const dot = document.querySelector('.dot');
+    const badgeEl = document.querySelector('.badge-online');
+    try {
+      const res = await fetch('/api/status');
+      const d = await res.json();
+      document.getElementById('uptime-val').textContent = formatUptime(d.uptime || 0);
+      document.getElementById('uptime-sub').textContent = formatUptimeSub(d.uptime || 0);
+      document.getElementById('guilds-val').textContent = d.guilds ?? '0';
+      document.getElementById('pending-val').textContent = d.pendingVerifications ?? '0';
+      document.getElementById('bot-val').textContent = d.bot || '—';
+      badge.textContent = 'online';
+      dot.style.background = '#4ade80';
+      badgeEl.style.color = '#4ade80';
+      updateSpark();
+      document.getElementById('last-update-txt').textContent = 'atualizado às ' + now();
+    } catch {
+      badge.textContent = 'offline';
+      dot.style.background = '#f87171';
+      badgeEl.style.color = '#f87171';
+      document.getElementById('uptime-val').textContent = '—';
+      document.getElementById('last-update-txt').textContent = 'falha na conexão';
+    }
+  }
+  fetchStatus();
+  setInterval(fetchStatus, 15000);
+</script>
+</body>
+</html>

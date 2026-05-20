@@ -11,10 +11,11 @@ const { startAPI } = require('../api/server');
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMembers,    // necessário para guildMemberAdd
-    GatewayIntentBits.GuildMessages,   // necessário para messageCreate
-    GatewayIntentBits.MessageContent,  // necessário para ler conteúdo da msg
-    GatewayIntentBits.DirectMessages,  // necessário para enviar DM
+    GatewayIntentBits.GuildMembers,       // necessário para guildMemberAdd/Remove
+    GatewayIntentBits.GuildModeration,    // necessário para guildBanAdd
+    GatewayIntentBits.GuildMessages,      // necessário para messageCreate
+    GatewayIntentBits.MessageContent,     // necessário para ler conteúdo da msg
+    GatewayIntentBits.DirectMessages,     // necessário para enviar DM
   ],
   partials: [Partials.Channel, Partials.Message],
 });

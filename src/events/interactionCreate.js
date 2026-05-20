@@ -6,18 +6,26 @@ const {
   ModalBuilder,
   TextInputBuilder,
   TextInputStyle,
+  PermissionFlagsBits,
 } = require('discord.js');
 const { generateCode, isCodeValid } = require('../utils/codeManager');
 
 const UNVERIFIED_ROLE = '❌Unverified';
 const VERIFIED_ROLE   = '✅Verified';
-const MEMBER_ROLE_ID  = '1504852768563920936'; // 👥Membro
+const MEMBER_ROLE_ID  = '1504852768563920936';
 
 const PING_ROLES = [
   { id: '1504964221048455199', customId: 'ping_update'     },
   { id: '1504964041959931965', customId: 'ping_ann_script' },
   { id: '1504962681784766555', customId: 'ping_ann_hub'    },
   { id: '1504962613480525905', customId: 'ping_revive'     },
+];
+
+const STAFF_ROLE_IDS = [
+  '1504850593678757969',
+  '1504858498985627828',
+  '1504860250925170818',
+  '1506714071695757484',
 ];
 
 module.exports = {
@@ -43,8 +51,12 @@ module.exports = {
       return;
     }
 
+    if (!interaction.isButton()) return;
+
+    const { customId } = interaction;
+
     // ── Botão: Iniciar verificação ──────────────────────────────────
-    if (interaction.isButton() && interaction.customId === 'start_verify') {
+    if (customId === 'start_verify') {
       const userId = interaction.user.id;
       const guild  = interaction.guild;
 
@@ -100,7 +112,7 @@ module.exports = {
     }
 
     // ── Botão: Abrir modal ─────────────────────────────────────────
-    if (interaction.isButton() && interaction.customId === 'send_code') {
+    if (customId === 'send_code') {
       const modal = new ModalBuilder()
         .setCustomId('code_verify_modal')
         .setTitle('Code Verify');
@@ -119,25 +131,41 @@ module.exports = {
       return;
     }
 
-    // ── Modal Submit: Validar código ───────────────────────────────
-    if (interaction.isModalSubmit() && interaction.customId === 'code_verify_modal') {
-      await handleCodeValidation(
-        interaction,
-        client,
-        interaction.fields.getTextInputValue('code_input').trim().toUpperCase()
-      );
+    // ── Botões de Ping (toggle) ────────────────────────────────────
+    const pingRole = PING_ROLES.find(r => r.customId === customId);
+    if (pingRole) {
+      await handlePingToggle(interaction, pingRole);
       return;
     }
 
-    // ── Botões de Ping (toggle de cargo) ───────────────────────────
-    if (interaction.isButton()) {
-      const pingRole = PING_ROLES.find(r => r.customId === interaction.customId);
-      if (pingRole) {
-        await handlePingToggle(interaction, pingRole);
-        return;
-      }
+    // ── Botão: Fechar Ticket ───────────────────────────────────────
+    if (customId.startsWith('close_ticket_')) {
+      await handleCloseTicket(interaction);
+      return;
+    }
+
+    // ── Botões de Poll ─────────────────────────────────────────────
+    if (customId.match(/^poll_\d+_\d+$/)) {
+      await handlePollVote(interaction, client);
+      return;
     }
   },
+};
+
+// ── Modal Submit ───────────────────────────────────────────────────
+// (precisa estar no execute, mas Discord.js permite separar assim)
+const originalModule = module.exports;
+const origExecute    = originalModule.execute;
+originalModule.execute = async function (interaction, client) {
+  if (interaction.isModalSubmit() && interaction.customId === 'code_verify_modal') {
+    await handleCodeValidation(
+      interaction,
+      client,
+      interaction.fields.getTextInputValue('code_input').trim().toUpperCase()
+    );
+    return;
+  }
+  return origExecute(interaction, client);
 };
 
 // ── Validação de código ────────────────────────────────────────────
@@ -162,28 +190,20 @@ async function handleCodeValidation(interaction, client, inputCode) {
     return;
   }
 
-  // ✅ Código correto
   try {
     const guild  = await client.guilds.fetch(entry.guildId);
     const member = await guild.members.fetch(userId);
 
-    // Remove ❌Unverified
     const unverifiedRole = guild.roles.cache.find(r => r.name === UNVERIFIED_ROLE);
     if (unverifiedRole && member.roles.cache.has(unverifiedRole.id)) {
       await member.roles.remove(unverifiedRole);
     }
 
-    // Adiciona ✅Verified
     const verifiedRole = guild.roles.cache.find(r => r.name === VERIFIED_ROLE);
     if (verifiedRole) await member.roles.add(verifiedRole);
 
-    // Adiciona 👥Membro
     const memberRole = guild.roles.cache.get(MEMBER_ROLE_ID);
-    if (memberRole) {
-      await member.roles.add(memberRole);
-    } else {
-      console.warn(`[VERIFY] Cargo 👥Membro (${MEMBER_ROLE_ID}) não encontrado.`);
-    }
+    if (memberRole) await member.roles.add(memberRole);
 
     client.verificationCodes.delete(userId);
 
@@ -228,8 +248,66 @@ async function handlePingToggle(interaction, pingRole) {
     }
   } catch (err) {
     console.error('[PING TOGGLE] Erro:', err);
-    await interaction.reply({ content: '❌ Não foi possível alterar o cargo. Contate um administrador.', ephemeral: true });
+    await interaction.reply({ content: '❌ Não foi possível alterar o cargo.', ephemeral: true });
   }
+}
+
+// ── Fechar Ticket ──────────────────────────────────────────────────
+async function handleCloseTicket(interaction) {
+  const isStaff = STAFF_ROLE_IDS.some(id => interaction.member.roles.cache.has(id));
+  const ticketOwnerId = interaction.customId.replace('close_ticket_', '');
+  const isOwner = interaction.user.id === ticketOwnerId;
+
+  if (!isStaff && !isOwner) {
+    await interaction.reply({ content: '❌ Apenas a staff ou quem abriu o ticket pode fechá-lo.', ephemeral: true });
+    return;
+  }
+
+  await interaction.reply({ content: '🔒 Fechando ticket em 5 segundos...' });
+  setTimeout(async () => {
+    try {
+      await interaction.channel.delete();
+    } catch (err) {
+      console.error('[TICKET] Erro ao deletar canal:', err);
+    }
+  }, 5000);
+}
+
+// ── Votação na Poll ────────────────────────────────────────────────
+async function handlePollVote(interaction, client) {
+  const { buildPollEmbed } = require('../commands/poll');
+  const pollVotes = client._pollVotes;
+
+  if (!pollVotes) {
+    await interaction.reply({ content: '❌ Dados da enquete não encontrados.', ephemeral: true });
+    return;
+  }
+
+  // customId formato: poll_TIMESTAMP_OPCAOINDEX
+  const parts   = interaction.customId.split('_');
+  const pollId  = `poll_${parts[1]}`;
+  const optIdx  = parseInt(parts[2]);
+  const data    = pollVotes.get(pollId);
+
+  if (!data) {
+    await interaction.reply({ content: '❌ Enquete não encontrada ou expirada.', ephemeral: true });
+    return;
+  }
+
+  const options = data._options;
+  const chosen  = options[optIdx];
+  const userId  = interaction.user.id;
+
+  // Remove voto anterior se existia em outra opção
+  for (const op of options) {
+    data[op].delete(userId);
+  }
+  // Adiciona novo voto
+  data[chosen].add(userId);
+
+  // Atualiza o embed
+  const newEmbed = buildPollEmbed(data._pergunta, data, data._author);
+  await interaction.update({ embeds: [newEmbed] });
 }
 
 module.exports.handleCodeValidation = handleCodeValidation;
